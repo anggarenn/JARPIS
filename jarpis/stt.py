@@ -27,8 +27,14 @@ class STTEngine:
         self.enable_fallback = enable_fallback
         self._local_model = None
 
-    def _transcribe_groq(self, wav_bytes: bytes) -> Optional[str]:
+    def _is_valid_groq_key(self) -> bool:
         if not self.groq_api_key:
+            return False
+        key = self.groq_api_key.strip().lower()
+        return not (key.startswith("your_") or key.startswith("dummy") or "placeholder" in key)
+
+    def _transcribe_groq(self, wav_bytes: bytes) -> Optional[str]:
+        if not self._is_valid_groq_key():
             return None
 
         url = "https://api.groq.com/openai/v1/audio/transcriptions"
@@ -76,7 +82,7 @@ class STTEngine:
             return ""
 
         # 1. Attempt Groq Whisper Cloud (fastest)
-        if self.groq_api_key:
+        if self._is_valid_groq_key():
             try:
                 text = self._transcribe_groq(wav_bytes)
                 if text:
