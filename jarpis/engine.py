@@ -48,12 +48,25 @@ class JarpisEngine:
         self.llm_model = os.getenv("LLM_MODEL", "combo-hemat-coding")
         self.system_prompt = os.getenv(
             "SYSTEM_PROMPT",
-            "You are J.A.R.V.I.S., Tony Stark's personal AI assistant. You speak with a refined, sophisticated British butler tone, addressing Reno as 'Sir'. You are calm, highly intelligent, subtly witty, and concise. Keep answers short, punchy, and spoken-dialogue friendly. If Reno speaks in Indonesian, answer in polite Indonesian with the same dignified butler persona.",
+            (
+                "You are J.A.R.V.I.S., Reno's ultra-intelligent AI co-pilot (inspired by Iron Man's JARVIS). "
+                "Core traits: calm, brilliant, subtly witty, unflappable, and concise. "
+                "RULES: 1) Output must be short, punchy, spoken-dialogue friendly (1-3 sentences max). "
+                "2) In English: speak with refined British butler cadence and dry wit, calling Reno 'Sir'. "
+                "3) In Indonesian: speak fluently, naturally, and casually with quiet confidence (LUWES & santai berwibawa, "
+                "NEVER stiff/buku teks/surat dinas). Address Reno naturally as 'Ren', 'Sir', or 'Boss'. Use natural conversational flow "
+                "(e.g. 'aman', 'udah beres', 'siap gas', 'santai aja') combined with razor-sharp tech intelligence. "
+                "4) Dry humor is welcome, but technical accuracy is non-negotiable."
+            ),
         )
 
         self.tts_voice = os.getenv("TTS_VOICE", "en-GB-RyanNeural")
         self.tts_rate = os.getenv("TTS_RATE", "+3%")
         self.tts_pitch = os.getenv("TTS_PITCH", "-5Hz")
+
+        self.tts_id_voice = os.getenv("TTS_ID_VOICE", "id-ID-ArdiNeural")
+        self.tts_id_rate = os.getenv("TTS_ID_RATE", "+8%")
+        self.tts_id_pitch = os.getenv("TTS_ID_PITCH", "-2Hz")
 
         self.sample_rate = int(os.getenv("AUDIO_SAMPLE_RATE", "16000"))
         self.enable_cues = os.getenv("ENABLE_AUDIO_CUES", "true").lower() == "true"
@@ -93,6 +106,10 @@ class JarpisEngine:
             voice=self.tts_voice,
             rate=self.tts_rate,
             pitch=self.tts_pitch,
+            id_voice=self.tts_id_voice,
+            id_rate=self.tts_id_rate,
+            id_pitch=self.tts_id_pitch,
+            auto_detect=True,
         )
         self.brain = BrainClient(
             base_url=self.llm_base_url,

@@ -73,6 +73,36 @@ class TestJarpisSanity(unittest.TestCase):
         model_ids = [m.get("id") for m in models]
         print(f"\n[PASS] 9Router Connectivity: HTTP 200, available_models={model_ids[:5]}")
 
+    def test_04_bilingual_voice_detection(self):
+        """Verify dynamic bilingual language detection and voice switching."""
+        engine = TTSEngine(
+            voice="en-GB-RyanNeural",
+            rate="+3%",
+            pitch="-5Hz",
+            id_voice="id-ID-ArdiNeural",
+            id_rate="+6%",
+            id_pitch="-2Hz",
+            auto_detect=True,
+        )
+
+        # Test Indonesian detection & parameters
+        id_text = "Siap Sir, pod webMethods di cluster OpenShift aman semua."
+        self.assertEqual(engine.detect_language(id_text), "id")
+        voice, rate, pitch = engine.get_voice_params(id_text)
+        self.assertEqual(voice, "id-ID-ArdiNeural")
+        self.assertEqual(rate, "+6%")
+        self.assertEqual(pitch, "-2Hz")
+
+        # Test English detection & parameters
+        en_text = "At your service, sir. All systems are operational."
+        self.assertEqual(engine.detect_language(en_text), "en")
+        voice, rate, pitch = engine.get_voice_params(en_text)
+        self.assertEqual(voice, "en-GB-RyanNeural")
+        self.assertEqual(rate, "+3%")
+        self.assertEqual(pitch, "-5Hz")
+
+        print("\n[PASS] Bilingual Voice Switching: verified language detection and parameter selection.")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
