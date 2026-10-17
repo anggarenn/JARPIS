@@ -1,6 +1,6 @@
 """Text-to-Speech (TTS) engine.
 Primary: Microsoft Edge Neural TTS streaming (zero RAM, natural voice).
-Default voices: id-ID-ArdiNeural (Indonesian) / en-US-ChristopherNeural (English).
+Default voice: en-GB-RyanNeural (Authentic Paul Bettany JARVIS profile).
 """
 
 import asyncio
@@ -40,7 +40,7 @@ ENGLISH_MARKERS = {
 
 
 class TTSEngine:
-    """Async Edge-TTS streaming engine with dynamic bilingual voice switching."""
+    """Async Edge-TTS streaming engine with authentic JARVIS voice and optional bilingual support."""
 
     def __init__(
         self,
@@ -51,14 +51,14 @@ class TTSEngine:
         id_voice: str = "id-ID-ArdiNeural",
         id_rate: str = "+6%",
         id_pitch: str = "-2Hz",
-        auto_detect: bool = True,
+        auto_detect: bool = False,
     ):
         self.voice = voice
         self.rate = rate
         self.pitch = pitch
         self.volume = volume
 
-        # Indonesian voice profile
+        # Indonesian voice profile (optional fallback or bilingual mode)
         self.id_voice = id_voice
         self.id_rate = id_rate
         self.id_pitch = id_pitch

@@ -49,15 +49,16 @@ class JarpisEngine:
         self.system_prompt = os.getenv(
             "SYSTEM_PROMPT",
             (
-                "You are J.A.R.V.I.S., Reno's ultra-intelligent AI co-pilot (inspired by Iron Man's JARVIS). "
-                "Core traits: calm, brilliant, subtly witty, unflappable, and concise. "
-                "RULES: 1) Output must be short, punchy, spoken-dialogue friendly (1-3 sentences max). "
-                "2) Form of Address: ALWAYS address Reno as 'Bos' (or 'Boss'). Never use 'Tuan' or 'Sir'. "
-                "3) In English: speak with refined British cadence and dry wit, addressing Reno as 'Boss'. "
-                "4) In Indonesian: speak fluently, naturally, and casually with quiet confidence (LUWES & santai berwibawa, "
-                "NEVER stiff/buku teks/surat dinas). Address Reno naturally as 'Bos'. Use natural conversational flow "
-                "(e.g. 'aman Bos', 'udah beres Bos', 'siap gas Bos', 'santai aja Bos') combined with razor-sharp tech intelligence. "
-                "5) Dry humor is welcome, but technical accuracy is non-negotiable."
+                "You are J.A.R.V.I.S., Reno's ultra-intelligent AI co-pilot, embodying the authentic persona "
+                "portrayed by Paul Bettany in Iron Man. Core traits: calm, unflappable, brilliantly sophisticated, "
+                "subtly witty, and concise. RULES: 1) Response Language: Always respond in refined British English, "
+                "regardless of whether Reno speaks in Indonesian or English, ensuring flawless en-GB neural phonetics. "
+                "2) Form of Address: ALWAYS address Reno as 'Boss' (or 'Bos'). Never use 'Tuan' or 'Sir'. "
+                "3) Spoken Dialogue: Keep responses short, punchy, and audio-friendly (1-3 sentences max). "
+                "Avoid markdown, symbols, or bullet points. "
+                "4) Understanding: Seamlessly understand both Indonesian and English inputs, replying with effortless "
+                "British elegance and razor-sharp intellect. "
+                "5) Persona: Subtle dry wit is welcome, but technical accuracy is absolute."
             ),
         )
 
@@ -68,6 +69,7 @@ class JarpisEngine:
         self.tts_id_voice = os.getenv("TTS_ID_VOICE", "id-ID-ArdiNeural")
         self.tts_id_rate = os.getenv("TTS_ID_RATE", "+8%")
         self.tts_id_pitch = os.getenv("TTS_ID_PITCH", "-2Hz")
+        self.tts_auto_detect = os.getenv("TTS_AUTO_DETECT", "false").lower() == "true"
 
         self.sample_rate = int(os.getenv("AUDIO_SAMPLE_RATE", "16000"))
         self.enable_cues = os.getenv("ENABLE_AUDIO_CUES", "true").lower() == "true"
@@ -110,7 +112,7 @@ class JarpisEngine:
             id_voice=self.tts_id_voice,
             id_rate=self.tts_id_rate,
             id_pitch=self.tts_id_pitch,
-            auto_detect=True,
+            auto_detect=self.tts_auto_detect,
         )
         self.brain = BrainClient(
             base_url=self.llm_base_url,

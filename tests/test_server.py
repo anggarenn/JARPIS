@@ -16,8 +16,12 @@ class TestJarpisServer(unittest.IsolatedAsyncioTestCase):
     """Test server initialization, REST APIs, and WebSocket protocol."""
 
     async def asyncSetUp(self):
-        # Bind to localhost on test port 20139 without activating keyboard hotkey in headless test
-        self.test_port = 20139
+        # Dynamically allocate ephemeral localhost port to prevent port collisions
+        import socket
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind(("127.0.0.1", 0))
+            self.test_port = s.getsockname()[1]
+
         self.server = JarpisServer(host="127.0.0.1", port=self.test_port, enable_hotkey=False)
         self.server.loop = asyncio.get_running_loop()
         self.server.engine.loop = self.server.loop
@@ -25,7 +29,7 @@ class TestJarpisServer(unittest.IsolatedAsyncioTestCase):
         from aiohttp import web
         self.runner = web.AppRunner(self.server.app)
         await self.runner.setup()
-        self.site = web.TCPSite(self.runner, "127.0.0.1", self.test_port)
+        self.site = web.TCPSite(self.runner, "127.0.0.1", self.test_port, reuse_address=True)
         await self.site.start()
 
     async def asyncTearDown(self):

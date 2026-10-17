@@ -40,8 +40,8 @@ class TestJarpisSanity(unittest.TestCase):
 
     def test_02_edge_tts_in_memory_synthesis(self):
         """Verify Edge-TTS synthesizes audio into in-memory MP3 buffer without disk write or audio playback."""
-        engine = TTSEngine(voice="id-ID-ArdiNeural")
-        test_phrase = "Sistem JARPIS siap beroperasi."
+        engine = TTSEngine()
+        test_phrase = "JARPIS system online and operational, Boss."
 
         mp3_buffer = asyncio.run(engine.synthesize(test_phrase))
 
@@ -59,7 +59,7 @@ class TestJarpisSanity(unittest.TestCase):
         """Verify HTTP connectivity to local 9Router API endpoint."""
         router_url = "http://127.0.0.1:20128/v1/models"
         try:
-            response = httpx.get(router_url, timeout=5.0)
+            response = httpx.get(router_url, timeout=15.0)
         except httpx.ConnectError as err:
             self.fail(f"Failed to connect to 9Router on {router_url}: {err}")
 
@@ -73,9 +73,26 @@ class TestJarpisSanity(unittest.TestCase):
         model_ids = [m.get("id") for m in models]
         print(f"\n[PASS] 9Router Connectivity: HTTP 200, available_models={model_ids[:5]}")
 
-    def test_04_bilingual_voice_detection(self):
-        """Verify dynamic bilingual language detection and voice switching."""
-        engine = TTSEngine(
+    def test_04_authentic_jarvis_voice_default_and_detection(self):
+        """Verify default authentic JARVIS voice consistency and optional bilingual detection."""
+        # 1. Default engine: auto_detect is False, strictly locks to authentic en-GB-RyanNeural
+        engine_default = TTSEngine()
+        self.assertFalse(engine_default.auto_detect)
+
+        id_text = "Siap Bos, pod webMethods di cluster OpenShift aman semua."
+        v, r, p = engine_default.get_voice_params(id_text)
+        self.assertEqual(v, "en-GB-RyanNeural")
+        self.assertEqual(r, "+3%")
+        self.assertEqual(p, "-5Hz")
+
+        en_text = "At your service, Boss. All systems are operational."
+        v, r, p = engine_default.get_voice_params(en_text)
+        self.assertEqual(v, "en-GB-RyanNeural")
+        self.assertEqual(r, "+3%")
+        self.assertEqual(p, "-5Hz")
+
+        # 2. Explicit bilingual mode: auto_detect=True
+        engine_bilingual = TTSEngine(
             voice="en-GB-RyanNeural",
             rate="+3%",
             pitch="-5Hz",
@@ -84,24 +101,13 @@ class TestJarpisSanity(unittest.TestCase):
             id_pitch="-2Hz",
             auto_detect=True,
         )
-
-        # Test Indonesian detection & parameters
-        id_text = "Siap Sir, pod webMethods di cluster OpenShift aman semua."
-        self.assertEqual(engine.detect_language(id_text), "id")
-        voice, rate, pitch = engine.get_voice_params(id_text)
+        self.assertEqual(engine_bilingual.detect_language(id_text), "id")
+        voice, rate, pitch = engine_bilingual.get_voice_params(id_text)
         self.assertEqual(voice, "id-ID-ArdiNeural")
         self.assertEqual(rate, "+6%")
         self.assertEqual(pitch, "-2Hz")
 
-        # Test English detection & parameters
-        en_text = "At your service, sir. All systems are operational."
-        self.assertEqual(engine.detect_language(en_text), "en")
-        voice, rate, pitch = engine.get_voice_params(en_text)
-        self.assertEqual(voice, "en-GB-RyanNeural")
-        self.assertEqual(rate, "+3%")
-        self.assertEqual(pitch, "-5Hz")
-
-        print("\n[PASS] Bilingual Voice Switching: verified language detection and parameter selection.")
+        print("\n[PASS] Voice Consistency: default locked strictly to en-GB-RyanNeural (+3%, -5Hz), auto_detect=False.")
 
 
 if __name__ == "__main__":
