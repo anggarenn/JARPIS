@@ -1,0 +1,11 @@
+sounddevice>=0.4.6
+soundfile>=0.12.1
+keyboard>=0.13.5
+edge-tts>=6.1.12
+httpx>=0.27.0
+numpy>=1.24.0
+python-dotenv>=1.0.0
+
+# Optional Offline Fallback (Zero-CUDA, CTranslate2 INT8 CPU / ONNX)
+faster-whisper>=1.0.0; sys_platform == 'win32' or sys_platform == 'linux'
+onnxruntime>=1.17.0

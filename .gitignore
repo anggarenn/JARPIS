@@ -1,0 +1,46 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+.venv/
+ENV/
+
+# Environment variables & secrets
+.env
+.env.local
+*.env
+auth/
+credentials/
+credentials.json
+*.key
+*.pem
+*.token
+*.cert
+
+# Audio temporary files (anti-leak / zero-disk retention)
+*.wav
+*.mp3
+*.ogg
+*.flac
+*.pcm
+
+# IDE & Editor settings
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# Logs & temp files
+*.log
+logs/
+temp/
+scratch/
