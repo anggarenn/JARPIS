@@ -71,8 +71,9 @@ class STTEngine:
                 cpu_threads=4,
             )
 
-        bio = io.BytesIO(wav_bytes)
-        segments, _ = self._local_model.transcribe(bio, beam_size=1, language=None)
+        import soundfile as sf
+        audio_data, _ = sf.read(io.BytesIO(wav_bytes), dtype="float32")
+        segments, _ = self._local_model.transcribe(audio_data, beam_size=1, language=None)
         text = " ".join(seg.text for seg in segments).strip()
         return text
 

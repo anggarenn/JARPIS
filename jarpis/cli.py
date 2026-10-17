@@ -107,6 +107,14 @@ class JarpisAssistant:
             if not self.is_recording and not self.is_processing:
                 if self.loop and self.event_queue:
                     self.loop.call_soon_threadsafe(self.event_queue.put_nowait, "PRESS")
+        elif key == keyboard.Key.enter:
+            if not self.is_processing:
+                if not self.is_recording:
+                    if self.loop and self.event_queue:
+                        self.loop.call_soon_threadsafe(self.event_queue.put_nowait, "PRESS")
+                else:
+                    if self.loop and self.event_queue:
+                        self.loop.call_soon_threadsafe(self.event_queue.put_nowait, "RELEASE")
 
     def _on_release(self, key):
         if self._matches_key(key):
@@ -118,7 +126,7 @@ class JarpisAssistant:
                 self.loop.call_soon_threadsafe(self.event_queue.put_nowait, "EXIT")
 
     async def _handle_recording(self):
-        print(f"\n[*] Hold [{self.target_key.upper()}] to Speak... Ready")
+        print(f"\n[*] Ready! Hold [{self.target_key.upper()}] to Speak (or tap [ENTER] to toggle) | ESC to Exit")
         while True:
             action = await self.event_queue.get()
             if action == "EXIT":
@@ -132,7 +140,7 @@ class JarpisAssistant:
                 if self.enable_cues:
                     play_beep(880.0, 0.05)
                 self.recorder.start()
-                print("\r[*] Listening... (Release to send) ", end="", flush=True)
+                print("\r[*] Listening... (Release [F8] or tap [ENTER] to send) ", end="", flush=True)
 
             elif action == "RELEASE" and self.is_recording:
                 self.is_recording = False
@@ -198,7 +206,7 @@ class JarpisAssistant:
         print(" JARPIS Voice Assistant (Sub-800ms Latency, Zero-CUDA)")
         print(f" - Gateway: {self.llm_base_url} ({self.llm_model})")
         print(f" - Voice:   {self.tts_voice}")
-        print(f" - Trigger: Press & Hold [{self.target_key.upper()}] | ESC to Exit")
+        print(f" - Trigger: Hold [{self.target_key.upper()}] or tap [ENTER] | ESC to Exit")
         print("=" * 60)
 
         self.loop = asyncio.new_event_loop()
