@@ -7,6 +7,15 @@ import os
 import sys
 from pathlib import Path
 from typing import List, Dict
+
+# Ensure UTF-8 output on Windows console
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 from pynput import keyboard
 
 from jarpis.audio import AudioRecorder, AudioPlayer, play_beep
@@ -109,7 +118,7 @@ class JarpisAssistant:
                 self.loop.call_soon_threadsafe(self.event_queue.put_nowait, "EXIT")
 
     async def _handle_recording(self):
-        print(f"\n[● Hold {self.target_key.upper()} to Speak... Ready]")
+        print(f"\n[*] Hold [{self.target_key.upper()}] to Speak... Ready")
         while True:
             action = await self.event_queue.get()
             if action == "EXIT":
@@ -123,7 +132,7 @@ class JarpisAssistant:
                 if self.enable_cues:
                     play_beep(880.0, 0.05)
                 self.recorder.start()
-                print("\r[● Listening... (Release to send)]", end="", flush=True)
+                print("\r[*] Listening... (Release to send) ", end="", flush=True)
 
             elif action == "RELEASE" and self.is_recording:
                 self.is_recording = False
@@ -131,13 +140,13 @@ class JarpisAssistant:
                 if self.enable_cues:
                     play_beep(660.0, 0.05)
 
-                print("\r[⚡ Transcribing speech...]        ", end="", flush=True)
+                print("\r[>] Transcribing speech...         ", end="", flush=True)
                 self.is_processing = True
                 try:
                     await self._process_turn(wav_bytes)
                 finally:
                     self.is_processing = False
-                    print(f"\n[● Hold {self.target_key.upper()} to Speak... Ready]")
+                    print(f"\n[*] Hold [{self.target_key.upper()}] to Speak... Ready")
 
     async def _process_turn(self, wav_bytes: bytes):
         if not wav_bytes:
