@@ -7,21 +7,63 @@ import queue
 import threading
 import wave
 from typing import Optional, Tuple
+import os
 import numpy as np
 import sounddevice as sd
 import soundfile as sf
 
 
+def find_system_audio_device(kind: str = "output") -> Optional[int]:
+    """Find the best audio device that tracks Windows defaults (DirectSound / Sound Mapper)."""
+    env_name = os.getenv("AUDIO_OUTPUT_DEVICE" if kind == "output" else "AUDIO_INPUT_DEVICE", "").strip()
+    devices = sd.query_devices()
+
+    # 1. Custom device configured via env
+    if env_name:
+        for idx, d in enumerate(devices):
+            if env_name.lower() in d["name"].lower():
+                if kind == "output" and d["max_output_channels"] > 0:
+                    return idx
+                if kind == "input" and d["max_input_channels"] > 0:
+                    return idx
+
+    # 2. Windows Primary Sound Driver (DirectSound - tracks active Windows default)
+    primary_target = "Primary Sound Driver" if kind == "output" else "Primary Sound Capture Driver"
+    for idx, d in enumerate(devices):
+        if primary_target.lower() in d["name"].lower():
+            return idx
+
+    # 3. Microsoft Sound Mapper (MME - tracks active Windows default)
+    mapper_target = "Microsoft Sound Mapper"
+    for idx, d in enumerate(devices):
+        if mapper_target.lower() in d["name"].lower():
+            if kind == "output" and d["max_output_channels"] > 0:
+                return idx
+            if kind == "input" and d["max_input_channels"] > 0:
+                return idx
+
+    # 4. Fallback to PortAudio default
+    return sd.default.device[1] if kind == "output" else sd.default.device[0]
+
+
 class AudioRecorder:
     """In-memory 16kHz mono audio recorder using sounddevice.RawInputStream."""
 
-    def __init__(self, sample_rate: int = 16000, channels: int = 1):
+    def __init__(self, sample_rate: int = 16000, channels: int = 1, device: Optional[int] = None):
         self.sample_rate = sample_rate
         self.channels = channels
+        self.device = device if device is not None else find_system_audio_device("input")
         self._stream: Optional[sd.RawInputStream] = None
         self._frames: bytearray = bytearray()
         self._is_recording = False
         self._lock = threading.Lock()
+
+    @property
+    def device_name(self) -> str:
+        try:
+            return sd.query_devices(self.device)["name"]
+        except Exception:
+            return f"Device #{self.device}"
 
     def _audio_callback(self, indata, frame_count, time_info, status):
         if status:
@@ -40,6 +82,7 @@ class AudioRecorder:
                 samplerate=self.sample_rate,
                 channels=self.channels,
                 dtype="int16",
+                device=self.device,
                 callback=self._audio_callback,
             )
             self._stream.start()
@@ -74,11 +117,19 @@ class AudioRecorder:
 class AudioPlayer:
     """Non-blocking audio player supporting in-memory MP3 and WAV playback."""
 
-    def __init__(self):
+    def __init__(self, device: Optional[int] = None):
+        self.device = device if device is not None else find_system_audio_device("output")
         self._queue: queue.Queue = queue.Queue()
         self._stop_event = threading.Event()
         self._worker_thread = threading.Thread(target=self._playback_worker, daemon=True)
         self._worker_thread.start()
+
+    @property
+    def device_name(self) -> str:
+        try:
+            return sd.query_devices(self.device)["name"]
+        except Exception:
+            return f"Device #{self.device}"
 
     def _playback_worker(self):
         while not self._stop_event.is_set():
@@ -93,10 +144,10 @@ class AudioPlayer:
             try:
                 with io.BytesIO(audio_bytes) as bio:
                     data, samplerate = sf.read(bio, dtype="float32")
-                sd.play(data, samplerate)
+                sd.play(data, samplerate, device=self.device)
                 sd.wait()
-            except Exception:
-                pass
+            except Exception as err:
+                print(f"\n[Audio Playback Warning: {err}]", flush=True)
             finally:
                 self._queue.task_done()
 
@@ -126,15 +177,37 @@ class AudioPlayer:
         self._queue.put(None)
 
 
+def play_jarvis_chime(kind: str = "wake"):
+    """Play futuristic Stark Industries holographic HUD chime."""
+    sr = 24000
+    if kind == "wake":
+        # Dual-harmonic ascending sci-fi chime (587Hz D5 -> 880Hz A5 -> 1174Hz D6)
+        dur = 0.18
+        t = np.linspace(0, dur, int(sr * dur), False)
+        wave = (
+            0.15 * np.sin(2 * np.pi * 587.33 * t)
+            + 0.20 * np.sin(2 * np.pi * 880.00 * t)
+            + 0.15 * np.sin(2 * np.pi * 1174.66 * t)
+        )
+        env = np.exp(-t * 12)
+        audio = (wave * env).astype(np.float32)
+    elif kind == "send":
+        # Soft acknowledgment ping (1046Hz -> decay)
+        dur = 0.12
+        t = np.linspace(0, dur, int(sr * dur), False)
+        wave = 0.18 * np.sin(2 * np.pi * 1046.50 * t) + 0.08 * np.sin(2 * np.pi * 2093.00 * t)
+        env = np.exp(-t * 18)
+        audio = (wave * env).astype(np.float32)
+    else:
+        return
+
+    dev = find_system_audio_device("output")
+    try:
+        sd.play(audio, sr, device=dev)
+    except Exception:
+        sd.play(audio, sr)
+
+
 def play_beep(freq: float = 880.0, duration: float = 0.06, volume: float = 0.15):
-    """Play a short synthetic beep cue using numpy sine wave."""
-    sr = 16000
-    t = np.linspace(0, duration, int(sr * duration), False)
-    sine = np.sin(2 * np.pi * freq * t)
-    # Simple linear envelope to eliminate audio clicks
-    env_len = int(sr * 0.01)
-    env = np.ones_like(sine)
-    env[:env_len] = np.linspace(0, 1, env_len)
-    env[-env_len:] = np.linspace(1, 0, env_len)
-    audio = (sine * env * volume).astype(np.float32)
-    sd.play(audio, sr)
+    """Play a short synthetic cue using sci-fi HUD chime."""
+    play_jarvis_chime("wake" if freq >= 800.0 else "send")

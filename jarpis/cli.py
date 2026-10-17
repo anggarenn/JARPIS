@@ -54,12 +54,12 @@ class JarpisAssistant:
         self.llm_model = os.getenv("LLM_MODEL", "anthropic/claude-3-5-sonnet-20241022")
         self.system_prompt = os.getenv(
             "SYSTEM_PROMPT",
-            "Kamu adalah Jarvis, asisten AI pribadi. Jawab singkat, padat, teknis, dan natural dalam bahasa Indonesia.",
+            "You are J.A.R.V.I.S., Tony Stark's personal AI assistant. You speak with a refined, sophisticated British butler tone, addressing Reno as 'Sir'. You are calm, highly intelligent, subtly witty, and concise. Keep answers short, punchy, and spoken-dialogue friendly. If Reno speaks in Indonesian, answer in polite Indonesian with the same dignified butler persona.",
         )
 
-        self.tts_voice = os.getenv("TTS_VOICE", "id-ID-ArdiNeural")
-        self.tts_rate = os.getenv("TTS_RATE", "+0%")
-        self.tts_pitch = os.getenv("TTS_PITCH", "+0Hz")
+        self.tts_voice = os.getenv("TTS_VOICE", "en-GB-RyanNeural")
+        self.tts_rate = os.getenv("TTS_RATE", "+3%")
+        self.tts_pitch = os.getenv("TTS_PITCH", "-5Hz")
 
         self.sample_rate = int(os.getenv("AUDIO_SAMPLE_RATE", "16000"))
         self.enable_cues = os.getenv("ENABLE_AUDIO_CUES", "true").lower() == "true"
@@ -197,6 +197,9 @@ class JarpisAssistant:
             if full_reply:
                 self.history.append({"role": "assistant", "content": full_reply})
 
+            # Wait for all audio chunks to finish playing before readying next turn
+            await asyncio.to_thread(self.player.wait_until_done)
+
         except Exception as brain_err:
             print(f"\n[Brain Error: {brain_err}]")
 
@@ -206,6 +209,8 @@ class JarpisAssistant:
         print(" JARPIS Voice Assistant (Sub-800ms Latency, Zero-CUDA)")
         print(f" - Gateway: {self.llm_base_url} ({self.llm_model})")
         print(f" - Voice:   {self.tts_voice}")
+        print(f" - Speaker: {self.player.device_name}")
+        print(f" - Mic:     {self.recorder.device_name}")
         print(f" - Trigger: Hold [{self.target_key.upper()}] or tap [ENTER] | ESC to Exit")
         print("=" * 60)
 
