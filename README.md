@@ -120,12 +120,40 @@ pip install -r requirements.txt
 # Copy environment configuration
 cp .env.example .env
 
-# Edit .env with your favorite editor (set your LLM endpoint or Groq API key)
-# Run JARPIS
-python jarvis.py
+# Edit .env (set your LLM endpoint, model, or Groq API key)
 ```
 
-Press and hold **`F8`**, speak your command, and release. Audio playback starts within 800ms!
+Choose your preferred operation mode:
+
+#### 🌐 Option A: Holographic Arc Reactor Web HUD (Recommended)
+Launch the local web & WebSocket telemetry server and open the Iron Man 3 Second Screen HUD:
+```bash
+# Double-click or run:
+start_ui.bat
+# Or via CLI:
+python run_server.py
+```
+Open **`http://127.0.0.1:20130`** in any desktop or mobile browser. Tap the Arc Reactor to speak or hold **`F8`** / **`ENTER`**!
+
+#### 🛡️ Option B: Windows System Tray Background Daemon
+Run JARPIS silently in the Windows Notification Area with a dynamic Stark Arc Reactor icon:
+```bash
+# Double-click or run:
+start_tray.bat
+# Or via CLI:
+python run_tray.py
+```
+Right-click the tray icon to open the HUD, trigger listening, or exit.
+
+#### 💻 Option C: Classic Interactive Terminal
+Run in the terminal with Push-to-Talk console output:
+```bash
+# Double-click or run:
+start.bat
+# Or via CLI:
+python run.py
+```
+Hold **`F8`** (or tap **`ENTER`** to toggle), speak your command, and release. Audio playback starts within 800ms!
 
 ---
 
@@ -136,14 +164,16 @@ Configuration can be specified in `.env` or passed via environment variables:
 | Variable | Default | Description |
 | :--- | :--- | :--- |
 | `LLM_BASE_URL` | `http://127.0.0.1:20128/v1` | OpenAI-compatible LLM endpoint (9Router, Ollama, vLLM, LM Studio) |
-| `LLM_MODEL` | `deepseek-chat` | Model identifier used for inference |
+| `LLM_MODEL` | `combo-hemat-coding` | Model identifier used for inference |
+| `LLM_API_KEY` | *(empty)* | Optional API token for your LLM gateway |
+| `JARPIS_PORT` | `20130` | Local port for Web HUD & WebSocket telemetry server |
 | `GROQ_API_KEY` | *(empty)* | Groq API key for ultra-fast primary STT (~120ms) |
-| `STT_FALLBACK_OFFLINE` | `true` | Automatically falls back to local CPU whisper when offline |
-| `OFFLINE_CPU_THREADS`| `4` | Maximum CPU thread allocation for local whisper inference |
-| `TTS_PRIMARY_ENGINE` | `edge-tts` | Primary voice synthesizer (`edge-tts` or `kokoro`) |
-| `TTS_PRIMARY_VOICE` | `id-ID-ArdiNeural` | Target voice model (`id-ID-ArdiNeural`, `en-US-ChristopherNeural`) |
-| `TRIGGER_MODE` | `ptt` | Trigger interface (`ptt` for Push-to-Talk or `vad` for hands-free) |
-| `PTT_HOTKEY` | `F8` | Global keyboard shortcut for Push-to-Talk |
+| `GROQ_MODEL` | `whisper-large-v3-turbo` | Groq Whisper model identifier |
+| `TTS_VOICE` | `en-GB-RyanNeural` | British Paul Bettany JARVIS voice profile |
+| `TTS_RATE` | `+3%` | Voice articulation speed adjustment |
+| `TTS_PITCH` | `-5Hz` | Voice pitch calibration |
+| `PTT_KEY` | `f8` | Global keyboard shortcut for Push-to-Talk (also supports `ENTER`) |
+| `ENABLE_AUDIO_CUES` | `true` | Plays sci-fi dual-harmonic activation & send chimes |
 
 ---
 

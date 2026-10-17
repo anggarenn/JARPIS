@@ -6,7 +6,7 @@ import io
 import queue
 import threading
 import wave
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Callable
 import os
 import numpy as np
 import sounddevice as sd
@@ -49,10 +49,17 @@ def find_system_audio_device(kind: str = "output") -> Optional[int]:
 class AudioRecorder:
     """In-memory 16kHz mono audio recorder using sounddevice.RawInputStream."""
 
-    def __init__(self, sample_rate: int = 16000, channels: int = 1, device: Optional[int] = None):
+    def __init__(
+        self,
+        sample_rate: int = 16000,
+        channels: int = 1,
+        device: Optional[int] = None,
+        on_amplitude: Optional[Callable[[float], None]] = None,
+    ):
         self.sample_rate = sample_rate
         self.channels = channels
         self.device = device if device is not None else find_system_audio_device("input")
+        self.on_amplitude = on_amplitude
         self._stream: Optional[sd.RawInputStream] = None
         self._frames: bytearray = bytearray()
         self._is_recording = False
@@ -70,6 +77,15 @@ class AudioRecorder:
             pass
         if self._is_recording:
             self._frames.extend(indata)
+            if self.on_amplitude:
+                try:
+                    arr = np.frombuffer(indata, dtype=np.int16)
+                    if len(arr) > 0:
+                        rms = float(np.sqrt(np.mean(arr.astype(np.float32) ** 2)))
+                        amp = min(1.0, max(0.0, rms / 6000.0))
+                        self.on_amplitude(amp)
+                except Exception:
+                    pass
 
     def start(self):
         """Start capturing audio into memory."""
@@ -117,12 +133,22 @@ class AudioRecorder:
 class AudioPlayer:
     """Non-blocking audio player supporting in-memory MP3 and WAV playback."""
 
-    def __init__(self, device: Optional[int] = None):
+    def __init__(
+        self,
+        device: Optional[int] = None,
+        on_play_state: Optional[Callable[[bool], None]] = None,
+    ):
         self.device = device if device is not None else find_system_audio_device("output")
+        self.on_play_state = on_play_state
         self._queue: queue.Queue = queue.Queue()
         self._stop_event = threading.Event()
+        self._is_playing = False
         self._worker_thread = threading.Thread(target=self._playback_worker, daemon=True)
         self._worker_thread.start()
+
+    @property
+    def is_playing(self) -> bool:
+        return self._is_playing
 
     @property
     def device_name(self) -> str:
@@ -142,6 +168,9 @@ class AudioPlayer:
                 break
 
             try:
+                self._is_playing = True
+                if self.on_play_state:
+                    self.on_play_state(True)
                 with io.BytesIO(audio_bytes) as bio:
                     data, samplerate = sf.read(bio, dtype="float32")
                 sd.play(data, samplerate, device=self.device)
@@ -149,6 +178,9 @@ class AudioPlayer:
             except Exception as err:
                 print(f"\n[Audio Playback Warning: {err}]", flush=True)
             finally:
+                self._is_playing = False
+                if self.on_play_state and self._queue.empty():
+                    self.on_play_state(False)
                 self._queue.task_done()
 
     def play(self, audio_bytes: bytes):

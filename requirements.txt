@@ -7,6 +7,10 @@ httpx>=0.27.0
 numpy>=1.24.0
 python-dotenv>=1.0.0
 
+aiohttp>=3.10.0
+pystray>=0.19.5
+pillow>=10.0.0
+
 # Optional Offline Fallback (Zero-CUDA, CTranslate2 INT8 CPU / ONNX)
 faster-whisper>=1.0.0; sys_platform == 'win32' or sys_platform == 'linux'
 onnxruntime>=1.17.0

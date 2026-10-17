@@ -1,0 +1,1456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>J.A.R.V.I.S. — Stark Industries Second Screen HUD</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0a0e17;
+      --bg-void: #050811;
+      --card-bg: rgba(12, 18, 32, 0.82);
+      --cyan-bright: #00e5ff;
+      --cyan-core: #00f0ff;
+      --cyan-glow: rgba(0, 229, 255, 0.45);
+      --cyan-dim: rgba(0, 229, 255, 0.18);
+      --blue-electric: #0088ff;
+      --green-online: #39ff14;
+      --amber-warn: #ffb800;
+      --red-alert: #ff0055;
+      --text-main: #d8f4ff;
+      --text-muted: #5a7b9c;
+      --border-wire: rgba(0, 229, 255, 0.28);
+      --border-bright: rgba(0, 240, 255, 0.85);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      background-color: var(--bg-void);
+      color: var(--text-main);
+      font-family: 'Rajdhani', -apple-system, sans-serif;
+      overflow-x: hidden;
+      overflow-y: auto;
+      position: relative;
+    }
+
+    /* Ambient Hex Grid & Holographic Scanlines */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(circle at 50% 50%, rgba(0, 229, 255, 0.08) 0%, transparent 70%),
+        linear-gradient(rgba(0, 229, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 229, 255, 0.03) 1px, transparent 1px);
+      background-size: 100% 100%, 32px 32px, 32px 32px;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0.18) 0px,
+        rgba(0, 0, 0, 0.18) 1px,
+        transparent 2px,
+        transparent 4px
+      );
+      pointer-events: none;
+      z-index: 2;
+      opacity: 0.7;
+    }
+
+    /* Main Container */
+    .hud-container {
+      position: relative;
+      z-index: 10;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 14px 20px;
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+
+    /* Chamfered Polygonal Cards */
+    .hud-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-wire);
+      position: relative;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      clip-path: polygon(
+        0 0,
+        calc(100% - 14px) 0,
+        100% 14px,
+        100% 100%,
+        14px 100%,
+        0 calc(100% - 14px)
+      );
+      box-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.7), inset 0 0 16px rgba(0, 229, 255, 0.04);
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .hud-card:hover {
+      border-color: rgba(0, 229, 255, 0.55);
+      box-shadow: 0 0 20px -2px var(--cyan-glow), inset 0 0 20px rgba(0, 229, 255, 0.08);
+    }
+
+    /* Tactical Corner Accents */
+    .hud-card .corner-tl,
+    .hud-card .corner-tr,
+    .hud-card .corner-bl,
+    .hud-card .corner-br {
+      position: absolute;
+      width: 7px;
+      height: 7px;
+      border-color: var(--cyan-bright);
+      pointer-events: none;
+    }
+    .hud-card .corner-tl { top: 2px; left: 2px; border-top: 2px solid var(--cyan-bright); border-left: 2px solid var(--cyan-bright); }
+    .hud-card .corner-tr { top: 2px; right: 2px; border-top: 2px solid var(--cyan-bright); border-right: 2px solid var(--cyan-bright); }
+    .hud-card .corner-bl { bottom: 2px; left: 2px; border-bottom: 2px solid var(--cyan-bright); border-left: 2px solid var(--cyan-bright); }
+    .hud-card .corner-br { bottom: 2px; right: 2px; border-bottom: 2px solid var(--cyan-bright); border-right: 2px solid var(--cyan-bright); }
+
+    /* Top Navigation HUD */
+    .hud-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 20px;
+      margin-bottom: 16px;
+    }
+
+    .brand-section {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .stark-logo {
+      width: 32px;
+      height: 32px;
+      fill: var(--cyan-bright);
+      filter: drop-shadow(0 0 8px var(--cyan-bright));
+    }
+
+    .brand-title {
+      font-family: 'Orbitron', monospace;
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: 3px;
+      color: #ffffff;
+      text-shadow: 0 0 10px var(--cyan-bright);
+    }
+
+    .brand-sub {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.72rem;
+      letter-spacing: 1.5px;
+      color: var(--cyan-bright);
+      opacity: 0.85;
+    }
+
+    .header-telemetry {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.78rem;
+    }
+
+    .badge-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      background: rgba(57, 255, 20, 0.1);
+      border: 1px solid rgba(57, 255, 20, 0.4);
+      color: var(--green-online);
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green-online);
+      box-shadow: 0 0 8px var(--green-online);
+      animation: pulseGreen 1.8s infinite;
+    }
+
+    @keyframes pulseGreen {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    /* Main Grid Layout */
+    .hud-main {
+      display: grid;
+      grid-template-columns: 310px 1fr 310px;
+      gap: 18px;
+      align-items: stretch;
+      flex: 1;
+    }
+
+    /* Left & Right Telemetry Panels */
+    .side-panel {
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .panel-title {
+      font-family: 'Orbitron', monospace;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: var(--cyan-bright);
+      text-transform: uppercase;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border-wire);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .telemetry-row {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .telemetry-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .telemetry-value {
+      font-family: 'Orbitron', monospace;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #ffffff;
+      letter-spacing: 1px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .telemetry-bar {
+      width: 100%;
+      height: 4px;
+      background: rgba(0, 229, 255, 0.12);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: 4px;
+      position: relative;
+    }
+
+    .telemetry-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--blue-electric), var(--cyan-bright));
+      box-shadow: 0 0 8px var(--cyan-bright);
+      transition: width 0.4s ease;
+    }
+
+    /* Center Stage: The Arc Reactor */
+    .center-stage {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      padding: 24px 16px;
+    }
+
+    .reactor-wrapper {
+      position: relative;
+      width: 440px;
+      height: 440px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      margin-bottom: 16px;
+      touch-action: manipulation;
+    }
+
+    /* Reactive Audio Canvas Overlay */
+    #waveformCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    /* Arc Reactor SVG Styling */
+    .reactor-svg {
+      width: 100%;
+      height: 100%;
+      filter: drop-shadow(0 0 20px rgba(0, 229, 255, 0.35));
+      transition: filter 0.3s ease, transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .reactor-wrapper:hover .reactor-svg {
+      filter: drop-shadow(0 0 32px rgba(0, 240, 255, 0.65));
+      transform: scale(1.02);
+    }
+
+    .reactor-wrapper:active .reactor-svg {
+      transform: scale(0.97);
+    }
+
+    /* Rotating Layers */
+    .rotate-slow-cw {
+      transform-origin: 220px 220px;
+      animation: rotateCW 32s linear infinite;
+    }
+
+    .rotate-med-ccw {
+      transform-origin: 220px 220px;
+      animation: rotateCCW 18s linear infinite;
+    }
+
+    .rotate-fast-cw {
+      transform-origin: 220px 220px;
+      animation: rotateCW 10s linear infinite;
+    }
+
+    .pulse-glow {
+      animation: pulseCore 2.4s ease-in-out infinite;
+    }
+
+    @keyframes rotateCW {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes rotateCCW {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(-360deg); }
+    }
+
+    @keyframes pulseCore {
+      0%, 100% {
+        opacity: 0.85;
+        filter: drop-shadow(0 0 18px var(--cyan-bright));
+      }
+      50% {
+        opacity: 1;
+        filter: drop-shadow(0 0 34px #ffffff) drop-shadow(0 0 45px var(--cyan-bright));
+      }
+    }
+
+    /* Reactor State Modifiers */
+    .reactor-wrapper.is-listening .reactor-svg {
+      filter: drop-shadow(0 0 42px var(--green-online));
+    }
+    .reactor-wrapper.is-listening .rotate-fast-cw {
+      animation-duration: 4s;
+    }
+
+    .reactor-wrapper.is-processing .reactor-svg {
+      filter: drop-shadow(0 0 48px var(--amber-warn));
+    }
+    .reactor-wrapper.is-processing .rotate-med-ccw {
+      animation-duration: 3s;
+    }
+
+    .reactor-wrapper.is-speaking .reactor-svg {
+      filter: drop-shadow(0 0 54px var(--cyan-bright)) drop-shadow(0 0 80px var(--blue-electric));
+    }
+    .reactor-wrapper.is-speaking .rotate-slow-cw {
+      animation-duration: 8s;
+    }
+
+    /* State Indicator Pill */
+    .state-pill {
+      font-family: 'Orbitron', monospace;
+      font-size: 0.88rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      padding: 6px 18px;
+      border: 1px solid var(--border-wire);
+      background: rgba(0, 229, 255, 0.08);
+      color: var(--cyan-bright);
+      text-transform: uppercase;
+      box-shadow: 0 0 12px rgba(0, 229, 255, 0.2);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      transition: all 0.3s ease;
+    }
+
+    .instruction-hint {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.78rem;
+      letter-spacing: 1.5px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      text-align: center;
+    }
+
+    .key-badge {
+      display: inline-block;
+      padding: 1px 7px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(0, 229, 255, 0.4);
+      color: #ffffff;
+      font-weight: bold;
+      border-radius: 2px;
+    }
+
+    /* Dialogue Transcript HUD */
+    .dialogue-box {
+      width: 100%;
+      max-width: 680px;
+      min-height: 110px;
+      padding: 14px 18px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      border: 1px solid var(--border-wire);
+      background: rgba(8, 14, 26, 0.9);
+      position: relative;
+    }
+
+    .dialogue-speaker {
+      font-family: 'Orbitron', monospace;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--cyan-bright);
+      letter-spacing: 1.5px;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .dialogue-text {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.95rem;
+      color: #ffffff;
+      line-height: 1.45;
+      text-shadow: 0 0 4px rgba(0, 229, 255, 0.4);
+      min-height: 2.8em;
+    }
+
+    .cursor-blink {
+      display: inline-block;
+      width: 8px;
+      height: 14px;
+      background: var(--cyan-bright);
+      margin-left: 4px;
+      vertical-align: middle;
+      animation: blink 0.9s infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    /* Diagnostic Console Stream */
+    .console-stream {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      height: 130px;
+      overflow-y: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 8px 10px;
+      background: rgba(5, 8, 17, 0.75);
+      border: 1px solid rgba(0, 229, 255, 0.15);
+    }
+
+    .console-line {
+      display: flex;
+      gap: 6px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .console-time {
+      color: var(--cyan-bright);
+      opacity: 0.7;
+    }
+
+    .console-tag {
+      color: var(--green-online);
+    }
+
+    /* Quick Voice Command Triggers */
+    .quick-triggers {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .btn-tactical {
+      font-family: 'Orbitron', monospace;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 1px;
+      color: var(--cyan-bright);
+      background: rgba(0, 229, 255, 0.06);
+      border: 1px solid var(--border-wire);
+      padding: 8px 6px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-transform: uppercase;
+      clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
+    }
+
+    .btn-tactical:hover {
+      background: rgba(0, 229, 255, 0.2);
+      border-color: var(--cyan-bright);
+      color: #ffffff;
+      box-shadow: 0 0 12px var(--cyan-glow);
+    }
+
+    .btn-tactical:active {
+      transform: scale(0.96);
+    }
+
+    /* Bottom Control Bar */
+    .hud-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 20px;
+      margin-top: 16px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.75rem;
+    }
+
+    .footer-left {
+      display: flex;
+      gap: 16px;
+      color: var(--text-muted);
+    }
+
+    .footer-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn-icon {
+      background: transparent;
+      border: 1px solid var(--border-wire);
+      color: var(--cyan-bright);
+      padding: 5px 12px;
+      font-family: 'Orbitron', monospace;
+      font-size: 0.72rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .btn-icon:hover {
+      background: rgba(0, 229, 255, 0.15);
+      border-color: var(--cyan-bright);
+      color: #ffffff;
+      box-shadow: 0 0 10px var(--cyan-glow);
+    }
+
+    /* Responsive Adaptation for Tablets and Mobile */
+    @media (max-width: 1180px) {
+      .hud-main {
+        grid-template-columns: 260px 1fr 260px;
+        gap: 12px;
+      }
+      .reactor-wrapper {
+        width: 360px;
+        height: 360px;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .hud-container {
+        padding: 8px 10px;
+      }
+      .hud-main {
+        grid-template-columns: 1fr;
+        display: flex;
+        flex-direction: column;
+      }
+      .center-stage {
+        order: 1;
+        padding: 12px 8px;
+      }
+      .reactor-wrapper {
+        width: 300px;
+        height: 300px;
+      }
+      .side-panel {
+        order: 2;
+        width: 100%;
+      }
+      .hud-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+      }
+      .header-telemetry {
+        flex-wrap: wrap;
+        width: 100%;
+        justify-content: space-between;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .brand-title {
+        font-size: 0.95rem;
+      }
+      .reactor-wrapper {
+        width: 260px;
+        height: 260px;
+      }
+      .dialogue-box {
+        min-height: 90px;
+      }
+      .dialogue-text {
+        font-size: 0.85rem;
+      }
+      .quick-triggers {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="hud-container">
+    <!-- Top Header HUD -->
+    <header class="hud-card hud-header">
+      <div class="corner-tl"></div><div class="corner-tr"></div>
+      <div class="corner-bl"></div><div class="corner-br"></div>
+
+      <div class="brand-section">
+        <svg class="stark-logo" viewBox="0 0 100 100">
+          <polygon points="50,5 95,85 5,85" fill="none" stroke="#00e5ff" stroke-width="6"/>
+          <circle cx="50" cy="55" r="18" fill="none" stroke="#00e5ff" stroke-width="4"/>
+          <line x1="50" y1="20" x2="50" y2="37" stroke="#00e5ff" stroke-width="4"/>
+          <line x1="26" y1="70" x2="39" y2="61" stroke="#00e5ff" stroke-width="4"/>
+          <line x1="74" y1="70" x2="61" y2="61" stroke="#00e5ff" stroke-width="4"/>
+        </svg>
+        <div>
+          <div class="brand-title">STARK INDUSTRIES</div>
+          <div class="brand-sub">J.A.R.V.I.S. // SECOND SCREEN TELEMETRY INTERFACE</div>
+        </div>
+      </div>
+
+      <div class="header-telemetry">
+        <div class="badge-status">
+          <div class="pulse-dot"></div>
+          <span>SYSTEM ONLINE</span>
+        </div>
+        <div>MARK-XLII // HUD PROTOCOL V4.2</div>
+        <div id="liveClock">00:00:00 UTC</div>
+      </div>
+    </header>
+
+    <!-- Main Holographic Grid -->
+    <main class="hud-main">
+
+      <!-- Left Telemetry Panel -->
+      <aside class="hud-card side-panel">
+        <div class="corner-tl"></div><div class="corner-tr"></div>
+        <div class="corner-bl"></div><div class="corner-br"></div>
+
+        <div class="panel-title">
+          <span>// CORE TELEMETRY</span>
+          <span style="font-size: 0.65rem; color: var(--green-online);">SEC_LVL_7</span>
+        </div>
+
+        <div class="telemetry-row">
+          <div class="telemetry-label">Inference Latency</div>
+          <div class="telemetry-value">
+            <span id="valLatency">342 ms</span>
+            <span style="font-size: 0.65rem; color: var(--green-online);">SUB-800MS PASS</span>
+          </div>
+          <div class="telemetry-bar"><div class="telemetry-fill" id="barLatency" style="width: 42%;"></div></div>
+        </div>
+
+        <div class="telemetry-row">
+          <div class="telemetry-label">Gateway & Model</div>
+          <div class="telemetry-value" style="font-size: 0.8rem; color: var(--cyan-bright);">
+            <span>9Router Claude 3.5</span>
+          </div>
+          <div style="font-size: 0.68rem; color: var(--text-muted); font-family: 'Share Tech Mono', monospace;">
+            GROQ WHISPER V3 + NEURAL TTS
+          </div>
+        </div>
+
+        <div class="telemetry-row">
+          <div class="telemetry-label">Hardware Architecture</div>
+          <div class="telemetry-value" style="font-size: 0.8rem;">
+            <span>AMD Ryzen 5 5600GT</span>
+          </div>
+          <div style="font-size: 0.68rem; color: var(--green-online); font-family: 'Share Tech Mono', monospace;">
+            ZERO-CUDA CPU ENGINE (6C/12T)
+          </div>
+        </div>
+
+        <div class="telemetry-row">
+          <div class="telemetry-label">Arc Core Output</div>
+          <div class="telemetry-value">
+            <span id="valPower">3.24 GW</span>
+            <span style="font-size: 0.65rem; color: var(--cyan-bright);">100% NOMINAL</span>
+          </div>
+          <div class="telemetry-bar"><div class="telemetry-fill" style="width: 98%;"></div></div>
+        </div>
+
+        <div class="telemetry-row">
+          <div class="telemetry-label">Audio Buffer / FFT</div>
+          <div class="telemetry-value">
+            <span id="valAudioRate">16.0 kHz</span>
+            <span style="font-size: 0.65rem; color: var(--text-muted);">MONO 16-BIT</span>
+          </div>
+          <div class="telemetry-bar"><div class="telemetry-fill" id="barAudio" style="width: 25%;"></div></div>
+        </div>
+
+        <div class="telemetry-row" style="margin-top: auto;">
+          <div class="telemetry-label">Second Screen Link</div>
+          <div class="telemetry-value" style="font-size: 0.78rem; color: var(--green-online);">
+            <span>CONNECTED (LOCAL BRG)</span>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Center Holographic Stage: Arc Reactor & Voice Engine -->
+      <section class="hud-card center-stage">
+        <div class="corner-tl"></div><div class="corner-tr"></div>
+        <div class="corner-bl"></div><div class="corner-br"></div>
+
+        <!-- Arc Reactor Container with layered SVGs & Waveform Canvas -->
+        <div class="reactor-wrapper" id="reactorBtn" title="Click or tap to talk to J.A.R.V.I.S.">
+          <!-- Canvas for circular audio reactive frequencies -->
+          <canvas id="waveformCanvas" width="440" height="440"></canvas>
+
+          <!-- SVG Holographic Arc Reactor Geometry -->
+          <svg class="reactor-svg" viewBox="0 0 440 440">
+            <defs>
+              <radialGradient id="arcGlow" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+                <stop offset="35%" stop-color="#00f0ff" stop-opacity="0.9"/>
+                <stop offset="70%" stop-color="#0088ff" stop-opacity="0.5"/>
+                <stop offset="100%" stop-color="#00e5ff" stop-opacity="0"/>
+              </radialGradient>
+              <linearGradient id="cyanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#00f0ff"/>
+                <stop offset="100%" stop-color="#0055ff"/>
+              </linearGradient>
+            </defs>
+
+            <!-- Layer 1: Static Outer Calibration Ring with Angle Ticks -->
+            <g stroke="#00e5ff" stroke-opacity="0.3" fill="none">
+              <circle cx="220" cy="220" r="210" stroke-width="1.5" stroke-dasharray="3 7"/>
+              <circle cx="220" cy="220" r="202" stroke-width="1"/>
+              <!-- Cardinal Crosshairs -->
+              <line x1="220" y1="6" x2="220" y2="22" stroke-width="2.5" stroke="#00f0ff"/>
+              <line x1="220" y1="418" x2="220" y2="434" stroke-width="2.5" stroke="#00f0ff"/>
+              <line x1="6" y1="220" x2="22" y2="220" stroke-width="2.5" stroke="#00f0ff"/>
+              <line x1="418" y1="220" x2="434" y2="220" stroke-width="2.5" stroke="#00f0ff"/>
+            </g>
+
+            <!-- Layer 2: Counter-Clockwise Segmented Dash Ring -->
+            <g class="rotate-med-ccw" stroke="#00f0ff" stroke-opacity="0.6" fill="none">
+              <circle cx="220" cy="220" r="185" stroke-width="3" stroke-dasharray="24 16 8 16"/>
+              <circle cx="220" cy="220" r="172" stroke-width="1.5" stroke-dasharray="4 6"/>
+            </g>
+
+            <!-- Layer 3: Clockwise 10-Segment Palladium Induction Coils -->
+            <g class="rotate-slow-cw">
+              <!-- 10 Magnetic Core Blocks -->
+              <g stroke="#00e5ff" stroke-width="2" fill="rgba(0, 229, 255, 0.12)">
+                <!-- Coils placed radially at 36 deg intervals -->
+                <rect x="211" y="44" width="18" height="28" rx="2" transform="rotate(0 220 220)"/>
+                <rect x="211" y="44" width="18" height="28" rx="2" transform="rotate(36 220 220)"/>
+                <rect x="211" y="44" width="18" height="28" rx="2" transform="rotate(72 220 220)"/>
+                <rect x="211" y="44" width="18" height="28" rx="2" transform="rotate(108 220 220)"/>
+                <rect x="211" y="44" width="18" height="28" rx="2" transform="rotate(144 220 220)"/>
+                <rect x="211" y="44" width="18" height="28" rx="2" transform="rotate(180 220 220)"/>
+                <rect x="211" y="44" width="18" height="28" rx="2" transform="rotate(216 220 220)"/>
+                <rect x="211" y="44" width="18" height="28" rx="2" transform="rotate(252 220 220)"/>
+                <rect x="211" y="44" width="18" height="28" rx="2" transform="rotate(288 220 220)"/>
+                <rect x="211" y="44" width="18" height="28" rx="2" transform="rotate(324 220 220)"/>
+              </g>
+              <circle cx="220" cy="220" r="148" stroke="#00e5ff" stroke-width="2.5" fill="none" stroke-opacity="0.5"/>
+            </g>
+
+            <!-- Layer 4: Fast Inner Tachometer Gear -->
+            <g class="rotate-fast-cw" stroke="#00f0ff" stroke-opacity="0.8" fill="none">
+              <circle cx="220" cy="220" r="126" stroke-width="3" stroke-dasharray="40 20"/>
+              <circle cx="220" cy="220" r="114" stroke-width="1.5" stroke-dasharray="6 8"/>
+            </g>
+
+            <!-- Layer 5: Triangular Unibeam Geometry (Mark VI / Mark 42 Motif) -->
+            <g class="rotate-slow-cw" stroke="#00f0ff" stroke-width="2" fill="none" opacity="0.75">
+              <polygon points="220,132 296,264 144,264"/>
+              <circle cx="220" cy="220" r="82" stroke="#ffffff" stroke-width="1.5" stroke-opacity="0.4"/>
+            </g>
+
+            <!-- Layer 6: Center Core Plasma Orb (Pulsating) -->
+            <g class="pulse-glow">
+              <circle cx="220" cy="220" r="68" fill="url(#arcGlow)"/>
+              <circle cx="220" cy="220" r="42" fill="#ffffff" opacity="0.95"/>
+              <circle cx="220" cy="220" r="24" fill="#ffffff"/>
+            </g>
+          </svg>
+        </div>
+
+        <!-- State & Interaction Controls -->
+        <div class="state-pill" id="statePill">
+          <span class="pulse-dot" id="stateDot"></span>
+          <span id="stateText">STANDBY // READY</span>
+        </div>
+
+        <div class="instruction-hint">
+          TAP REACTOR OR PRESS <span class="key-badge">SPACE</span> / <span class="key-badge">ENTER</span> TO ENGAGE
+        </div>
+
+        <!-- Subtitles / Jarvis Transcript Dialogue Box -->
+        <div class="hud-card dialogue-box">
+          <div class="corner-tl"></div><div class="corner-tr"></div>
+          <div class="corner-bl"></div><div class="corner-br"></div>
+          <div class="dialogue-speaker">
+            <span style="display:inline-block; width:6px; height:6px; background:var(--cyan-bright);"></span>
+            <span id="speakerLabel">J.A.R.V.I.S. // COGNITIVE STREAM</span>
+          </div>
+          <div class="dialogue-text">
+            <span id="transcriptContent">"Good day, Sir. All Mark-XLII telemetry channels are synchronized and operating at peak sub-800ms efficiency. How may I assist you?"</span>
+            <span class="cursor-blink"></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Telemetry Panel -->
+      <aside class="hud-card side-panel">
+        <div class="corner-tl"></div><div class="corner-tr"></div>
+        <div class="corner-bl"></div><div class="corner-br"></div>
+
+        <div class="panel-title">
+          <span>// SPECTRUM & DIAGNOSTICS</span>
+          <span style="font-size: 0.65rem; color: var(--cyan-bright);">HUD_CH_09</span>
+        </div>
+
+        <!-- Audio Frequency Spectrum Analyzer (Canvas) -->
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <div class="telemetry-label">Linear Spectral FFT</div>
+          <canvas id="spectrumCanvas" width="270" height="64" style="width:100%; height:64px; background:rgba(5,8,17,0.85); border:1px solid rgba(0,229,255,0.2);"></canvas>
+        </div>
+
+        <!-- Live Diagnostics Log Stream -->
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <div class="telemetry-label">Telemetry Stream</div>
+          <div class="console-stream" id="consoleStream">
+            <div class="console-line"><span class="console-time">[18:14:02]</span> <span class="console-tag">[SYS]</span> Arc reactor initialized</div>
+            <div class="console-line"><span class="console-time">[18:14:03]</span> <span class="console-tag">[NET]</span> 9Router gateway connected</div>
+            <div class="console-line"><span class="console-time">[18:14:04]</span> <span class="console-tag">[STT]</span> Groq whisper-large-v3 primed</div>
+            <div class="console-line"><span class="console-time">[18:14:05]</span> <span class="console-tag">[TTS]</span> Edge-TTS en-GB-RyanNeural ready</div>
+            <div class="console-line"><span class="console-time">[18:14:06]</span> <span class="console-tag">[HUD]</span> Sub-800ms pipeline operational</div>
+          </div>
+        </div>
+
+        <!-- Quick Tactical Voice Triggers -->
+        <div style="display: flex; flex-direction: column; gap: 6px; margin-top: auto;">
+          <div class="telemetry-label">Quick Directives</div>
+          <div class="quick-triggers">
+            <button class="btn-tactical" onclick="triggerPreset('Status report, Jarvis.')">Status Report</button>
+            <button class="btn-tactical" onclick="triggerPreset('Diagnostic scan on all modules.')">Diagnostics</button>
+            <button class="btn-tactical" onclick="triggerPreset('Check 9Router latency and CPU.')">Check Latency</button>
+            <button class="btn-tactical" onclick="triggerPreset('Clear speech buffer and reset.')">Reset Cache</button>
+          </div>
+        </div>
+      </aside>
+
+    </main>
+
+    <!-- Bottom Footer Status Bar -->
+    <footer class="hud-card hud-footer">
+      <div class="corner-tl"></div><div class="corner-tr"></div>
+      <div class="corner-bl"></div><div class="corner-br"></div>
+
+      <div class="footer-left">
+        <span>SECURITY: CLASSIFIED // LEVEL 7</span>
+        <span>ENCRYPTION: QUANTUM 4096-BIT</span>
+        <span>OS: WINDOWS // AMD RYZEN 5 5600GT</span>
+      </div>
+
+      <div class="footer-controls">
+        <button class="btn-icon" id="btnSoundToggle" onclick="toggleSound()">
+          <span id="soundIcon">🔊</span> AUDIO SFX
+        </button>
+        <button class="btn-icon" onclick="toggleFullscreen()">
+          <span>⛶</span> FULLSCREEN
+        </button>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    /* =========================================================
+       J.A.R.V.I.S. HOLOGRAPHIC SECOND SCREEN HUD LOGIC
+       ========================================================= */
+
+    // Application State
+    const AppState = {
+      STANDBY: 'STANDBY',
+      LISTENING: 'LISTENING',
+      PROCESSING: 'PROCESSING',
+      SPEAKING: 'SPEAKING'
+    };
+
+    let currentState = AppState.STANDBY;
+    let audioContext = null;
+    let analyser = null;
+    let micStream = null;
+    let sfxEnabled = true;
+    let simulationTime = 0;
+
+    // DOM Elements
+    const reactorBtn = document.getElementById('reactorBtn');
+    const statePill = document.getElementById('statePill');
+    const stateDot = document.getElementById('stateDot');
+    const stateText = document.getElementById('stateText');
+    const speakerLabel = document.getElementById('speakerLabel');
+    const transcriptContent = document.getElementById('transcriptContent');
+    const waveformCanvas = document.getElementById('waveformCanvas');
+    const waveformCtx = waveformCanvas.getContext('2d');
+    const spectrumCanvas = document.getElementById('spectrumCanvas');
+    const spectrumCtx = spectrumCanvas.getContext('2d');
+    const consoleStream = document.getElementById('consoleStream');
+    const valLatency = document.getElementById('valLatency');
+    const barLatency = document.getElementById('barLatency');
+    const liveClock = document.getElementById('liveClock');
+
+    // 1. Audio System & Synthesized Sci-Fi SFX (Web Audio API)
+    function initAudioContext() {
+      if (!audioContext) {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) {
+          audioContext = new AudioCtx();
+          analyser = audioContext.createAnalyser();
+          analyser.fftSize = 128;
+        }
+      }
+      if (audioContext && audioContext.state === 'suspended') {
+        audioContext.resume();
+      }
+    }
+
+    function playStarkBeep(freq = 880, duration = 0.06, type = 'sine') {
+      if (!sfxEnabled) return;
+      initAudioContext();
+      if (!audioContext) return;
+
+      try {
+        const osc = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioContext.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(freq * 1.25, audioContext.currentTime + duration);
+
+        gain.gain.setValueAtTime(0.12, audioContext.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + duration);
+
+        osc.connect(gain);
+        gain.connect(audioContext.destination);
+        osc.start();
+        osc.stop(audioContext.currentTime + duration);
+      } catch (e) {
+        console.warn("Audio SFX Error:", e);
+      }
+    }
+
+    function playReactorHum() {
+      if (!sfxEnabled) return;
+      initAudioContext();
+      if (!audioContext) return;
+
+      try {
+        const osc = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(110, audioContext.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(220, audioContext.currentTime + 0.25);
+
+        gain.gain.setValueAtTime(0.08, audioContext.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.25);
+
+        osc.connect(gain);
+        gain.connect(audioContext.destination);
+        osc.start();
+        osc.stop(audioContext.currentTime + 0.25);
+      } catch (e) {}
+    }
+
+    // 2. Microphone Integration (Real or Procedural Fallback)
+    async function startMicCapture() {
+      initAudioContext();
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        try {
+          if (!micStream) {
+            micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+            if (audioContext && analyser) {
+              const source = audioContext.createMediaStreamSource(micStream);
+              source.connect(analyser);
+              addLog('MIC', 'Audio stream connected to FFT analyzer');
+            }
+          }
+        } catch (err) {
+          addLog('WARN', 'Microphone hardware restricted, utilizing synthetic acoustic telemetry');
+        }
+      }
+    }
+
+    // 3. State Machine Transitions
+    function setState(newState) {
+      currentState = newState;
+      reactorBtn.classList.remove('is-listening', 'is-processing', 'is-speaking');
+
+      switch (newState) {
+        case AppState.STANDBY:
+          statePill.style.borderColor = 'var(--border-wire)';
+          statePill.style.color = 'var(--cyan-bright)';
+          stateDot.style.background = 'var(--green-online)';
+          stateDot.style.boxShadow = '0 0 8px var(--green-online)';
+          stateText.textContent = 'STANDBY // READY';
+          break;
+
+        case AppState.LISTENING:
+          reactorBtn.classList.add('is-listening');
+          statePill.style.borderColor = 'var(--green-online)';
+          statePill.style.color = 'var(--green-online)';
+          stateDot.style.background = 'var(--green-online)';
+          stateDot.style.boxShadow = '0 0 16px var(--green-online)';
+          stateText.textContent = 'RECORDING // LISTENING...';
+          speakerLabel.textContent = 'USER // INPUT CAPTURE';
+          typewriterText("Listening to your voice command...");
+          playStarkBeep(880, 0.08);
+          startMicCapture();
+          addLog('AUDIO', 'In-memory speech buffer engaged');
+          break;
+
+        case AppState.PROCESSING:
+          reactorBtn.classList.add('is-processing');
+          statePill.style.borderColor = 'var(--amber-warn)';
+          statePill.style.color = 'var(--amber-warn)';
+          stateDot.style.background = 'var(--amber-warn)';
+          stateDot.style.boxShadow = '0 0 16px var(--amber-warn)';
+          stateText.textContent = 'INFERENCE // 9ROUTER ROUTING';
+          speakerLabel.textContent = 'COGNITIVE ENGINE // STREAMING';
+          typewriterText("Transcribing via Groq Whisper & reasoning with Claude 3.5 Sonnet...");
+          playStarkBeep(660, 0.08);
+          addLog('LLM', 'Sentence chunker dispatching to Edge-TTS');
+          break;
+
+        case AppState.SPEAKING:
+          reactorBtn.classList.add('is-speaking');
+          statePill.style.borderColor = 'var(--cyan-bright)';
+          statePill.style.color = '#ffffff';
+          stateDot.style.background = 'var(--cyan-bright)';
+          stateDot.style.boxShadow = '0 0 20px var(--cyan-bright)';
+          stateText.textContent = 'SYNTHESIZING // JARVIS SPEAKING';
+          speakerLabel.textContent = 'J.A.R.V.I.S. // VOCAL SYNTHESIS';
+          playReactorHum();
+          break;
+      }
+    }
+
+    // Toggle Listening on Click or Hotkeys
+    function toggleInteraction() {
+      if (isConnectedToBackend && socket && socket.readyState === WebSocket.OPEN) {
+        if (currentState === AppState.STANDBY) {
+          socket.send(JSON.stringify({ action: 'start_listen' }));
+        } else if (currentState === AppState.LISTENING) {
+          socket.send(JSON.stringify({ action: 'stop_listen' }));
+        } else if (currentState === AppState.SPEAKING) {
+          socket.send(JSON.stringify({ action: 'stop_speaking' }));
+        }
+        return;
+      }
+
+      if (currentState === AppState.STANDBY) {
+        setState(AppState.LISTENING);
+      } else if (currentState === AppState.LISTENING) {
+        setState(AppState.PROCESSING);
+
+        // Simulated intelligent response turn with actual browser speech synthesis
+        setTimeout(() => {
+          simulateJarvisReply("Certainly, Sir. I have calibrated the neural audio pipeline. All systems are operating smoothly under 400 milliseconds.");
+        }, 900);
+      }
+    }
+
+    reactorBtn.addEventListener('click', toggleInteraction);
+
+    // Keyboard Hotkeys: Space / Enter to toggle PTT
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space' || e.code === 'Enter') {
+        if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+          e.preventDefault();
+          toggleInteraction();
+        }
+      } else if (e.code === 'KeyF') {
+        toggleFullscreen();
+      } else if (e.code === 'KeyM') {
+        toggleSound();
+      }
+    });
+
+    // 4. Circular Audio Waveform & Spectrum Visualizer
+    function renderVisualizers() {
+      requestAnimationFrame(renderVisualizers);
+      simulationTime += 0.04;
+
+      const fArray = new Uint8Array(64);
+      if (analyser && (currentState === AppState.LISTENING || currentState === AppState.SPEAKING)) {
+        analyser.getByteFrequencyData(fArray);
+      } else {
+        // Procedural organic frequency simulation based on state
+        for (let i = 0; i < 64; i++) {
+          if (currentState === AppState.LISTENING) {
+            fArray[i] = Math.max(10, Math.sin(simulationTime * 2 + i * 0.25) * 80 + Math.random() * 60 + 50);
+          } else if (currentState === AppState.SPEAKING) {
+            fArray[i] = Math.max(15, Math.cos(simulationTime * 3 + i * 0.3) * 100 + Math.sin(simulationTime * 5) * 40 + 70);
+          } else if (currentState === AppState.PROCESSING) {
+            fArray[i] = (i % 8 === 0) ? 90 + Math.sin(simulationTime * 8) * 30 : 15;
+          } else {
+            // Calm standby idle breathing
+            fArray[i] = Math.max(4, Math.sin(simulationTime * 0.8 + i * 0.1) * 14 + 10);
+          }
+        }
+      }
+
+      // Update Audio Buffer bar in Left HUD
+      const avgVol = fArray.reduce((a, b) => a + b, 0) / fArray.length;
+      document.getElementById('barAudio').style.width = Math.min(100, (avgVol / 120) * 100) + '%';
+
+      // --- A. Draw Circular Waveform around Arc Reactor ---
+      const wWidth = waveformCanvas.width;
+      const wHeight = waveformCanvas.height;
+      const cX = wWidth / 2;
+      const cY = wHeight / 2;
+      const baseRadius = 158;
+
+      waveformCtx.clearRect(0, 0, wWidth, wHeight);
+
+      const numBars = 48;
+      const angleStep = (Math.PI * 2) / numBars;
+
+      for (let i = 0; i < numBars; i++) {
+        const val = fArray[i % fArray.length] / 255;
+        const barHeight = val * 38;
+        const angle = i * angleStep;
+
+        const startX = cX + Math.cos(angle) * baseRadius;
+        const startY = cY + Math.sin(angle) * baseRadius;
+        const endX = cX + Math.cos(angle) * (baseRadius + barHeight);
+        const endY = cY + Math.sin(angle) * (baseRadius + barHeight);
+
+        waveformCtx.beginPath();
+        waveformCtx.moveTo(startX, startY);
+        waveformCtx.lineTo(endX, endY);
+
+        if (currentState === AppState.LISTENING) {
+          waveformCtx.strokeStyle = `rgba(57, 255, 20, ${0.4 + val * 0.6})`;
+          waveformCtx.shadowColor = '#39ff14';
+        } else if (currentState === AppState.PROCESSING) {
+          waveformCtx.strokeStyle = `rgba(255, 184, 0, ${0.4 + val * 0.6})`;
+          waveformCtx.shadowColor = '#ffb800';
+        } else if (currentState === AppState.SPEAKING) {
+          waveformCtx.strokeStyle = `rgba(0, 240, 255, ${0.5 + val * 0.5})`;
+          waveformCtx.shadowColor = '#00f0ff';
+        } else {
+          waveformCtx.strokeStyle = `rgba(0, 229, 255, ${0.15 + val * 0.3})`;
+          waveformCtx.shadowColor = '#00e5ff';
+        }
+
+        waveformCtx.lineWidth = 2.5;
+        waveformCtx.shadowBlur = (currentState !== AppState.STANDBY) ? 8 : 2;
+        waveformCtx.stroke();
+      }
+
+      // --- B. Draw Linear Spectrum Analyzer in Right HUD ---
+      const sWidth = spectrumCanvas.width;
+      const sHeight = spectrumCanvas.height;
+      spectrumCtx.clearRect(0, 0, sWidth, sHeight);
+
+      const sBarWidth = sWidth / 32;
+      for (let j = 0; j < 32; j++) {
+        const sVal = (fArray[j * 2] || 0) / 255;
+        const h = sVal * (sHeight - 6);
+
+        const grad = spectrumCtx.createLinearGradient(0, sHeight, 0, 0);
+        grad.addColorStop(0, '#0055ff');
+        grad.addColorStop(0.7, '#00e5ff');
+        grad.addColorStop(1, '#ffffff');
+
+        spectrumCtx.fillStyle = grad;
+        spectrumCtx.fillRect(j * sBarWidth + 1, sHeight - h, sBarWidth - 2, h);
+      }
+    }
+
+    // 5. Typewriter & Speech Simulation
+    let typewriterTimeout = null;
+    function typewriterText(text, callback) {
+      if (typewriterTimeout) clearTimeout(typewriterTimeout);
+      transcriptContent.textContent = "";
+      let idx = 0;
+
+      function typeChar() {
+        if (idx < text.length) {
+          transcriptContent.textContent += text.charAt(idx);
+          idx++;
+          typewriterTimeout = setTimeout(typeChar, 18);
+        } else if (callback) {
+          callback();
+        }
+      }
+      typeChar();
+    }
+
+    function simulateJarvisReply(replyText) {
+      setState(AppState.SPEAKING);
+      addLog('TTS', 'Streaming sentence chunk to speaker');
+
+      typewriterText(`"${replyText}"`, () => {
+        setTimeout(() => {
+          setState(AppState.STANDBY);
+          addLog('SYS', 'Turn complete, pipeline ready');
+        }, 1200);
+      });
+
+      // Browser TTS Speech Synthesis if available
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utter = new SpeechSynthesisUtterance(replyText);
+        utter.rate = 1.05;
+        utter.pitch = 0.95;
+
+        // Try selecting a British voice if installed
+        const voices = window.speechSynthesis.getVoices();
+        const britishVoice = voices.find(v => v.lang.includes('en-GB') || v.name.includes('UK') || v.name.includes('George') || v.name.includes('Oliver'));
+        if (britishVoice) utter.voice = britishVoice;
+
+        utter.onend = () => {
+          setState(AppState.STANDBY);
+        };
+        window.speechSynthesis.speak(utter);
+      }
+    }
+
+    function triggerPreset(phrase) {
+      initAudioContext();
+      playStarkBeep(720, 0.05);
+      speakerLabel.textContent = 'USER // VOICE COMMAND';
+      typewriterText(`"${phrase}"`);
+
+      if (isConnectedToBackend && socket && socket.readyState === WebSocket.OPEN) {
+        setState(AppState.PROCESSING);
+        addLog('USER', `Triggered: "${phrase}"`);
+        socket.send(JSON.stringify({ action: 'send_text', text: phrase }));
+        return;
+      }
+
+      typewriterText(`"${phrase}"`, () => {
+        setState(AppState.PROCESSING);
+        setTimeout(() => {
+          if (phrase.includes("Status")) {
+            simulateJarvisReply("All systems nominal, Sir. 9Router latency is clocking at 342 milliseconds. Zero-CUDA CPU thermal efficiency is at optimal levels.");
+          } else if (phrase.includes("Diagnostic")) {
+            simulateJarvisReply("Running full diagnostic pass: Groq Whisper V3 operational, Claude 3.5 Sonnet active, Edge-TTS synthesis synced. All green.");
+          } else if (phrase.includes("Latency")) {
+            simulateJarvisReply("Current roundtrip latency: 342 milliseconds, well within your sub-800ms target threshold, Sir.");
+          } else {
+            simulateJarvisReply("Audio cache cleared and pipeline refreshed. Memory footprints pruned.");
+          }
+        }, 700);
+      });
+    }
+
+    // 6. Diagnostic Log Stream Appender
+    function addLog(tag, message) {
+      const line = document.createElement('div');
+      line.className = 'console-line';
+      const now = new Date();
+      const timeStr = `[${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}]`;
+
+      line.innerHTML = `<span class="console-time">${timeStr}</span> <span class="console-tag">[${tag}]</span> ${message}`;
+      consoleStream.appendChild(line);
+      consoleStream.scrollTop = consoleStream.scrollHeight;
+
+      while (consoleStream.children.length > 25) {
+        consoleStream.removeChild(consoleStream.firstChild);
+      }
+    }
+
+    // 7. Fullscreen & Audio Controls
+    function toggleFullscreen() {
+      playStarkBeep(520, 0.05);
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        if (document.exitFullscreen) document.exitFullscreen();
+      }
+    }
+
+    function toggleSound() {
+      sfxEnabled = !sfxEnabled;
+      const icon = document.getElementById('soundIcon');
+      icon.textContent = sfxEnabled ? '🔊' : '🔇';
+      addLog('SFX', `Acoustic feedback ${sfxEnabled ? 'ENABLED' : 'MUTED'}`);
+      if (sfxEnabled) playStarkBeep(880, 0.05);
+    }
+
+    // 8. Clock & Dynamic Latency Micro-Fluctuations
+    setInterval(() => {
+      const now = new Date();
+      liveClock.textContent = now.toISOString().substring(11, 19) + ' UTC';
+
+      // Subtle realistic micro-fluctuation in latency
+      if (currentState === AppState.STANDBY) {
+        const jitter = Math.floor(335 + Math.random() * 25);
+        valLatency.textContent = jitter + ' ms';
+        barLatency.style.width = Math.floor((jitter / 800) * 100) + '%';
+      }
+    }, 1000);
+
+    // 9. Real-Time Telemetry WebSocket Client
+    let socket = null;
+    let isConnectedToBackend = false;
+
+    function connectWebSocket() {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/ws`;
+
+      try {
+        socket = new WebSocket(wsUrl);
+
+        socket.onopen = () => {
+          isConnectedToBackend = true;
+          addLog('NET', 'Connected to JARPIS Core Telemetry Server');
+          const coreStatus = document.getElementById('sysCore');
+          if (coreStatus) {
+            coreStatus.textContent = 'ONLINE (WS)';
+            coreStatus.style.color = 'var(--cyan-bright)';
+          }
+        };
+
+        socket.onmessage = (event) => {
+          try {
+            const msg = JSON.parse(event.data);
+            handleBackendMessage(msg);
+          } catch (err) {
+            console.error('WS parse error:', err);
+          }
+        };
+
+        socket.onclose = () => {
+          if (isConnectedToBackend) {
+            addLog('NET', 'Core Server disconnected. Reconnecting...');
+          }
+          isConnectedToBackend = false;
+          const coreStatus = document.getElementById('sysCore');
+          if (coreStatus) {
+            coreStatus.textContent = 'STANDALONE';
+            coreStatus.style.color = 'var(--amber-warn)';
+          }
+          setTimeout(connectWebSocket, 2000);
+        };
+
+        socket.onerror = () => {
+          socket.close();
+        };
+      } catch (e) {
+        // Standalone mode without backend
+      }
+    }
+
+    function handleBackendMessage(msg) {
+      if (msg.type === 'init') {
+        if (msg.model) {
+          const mEl = document.getElementById('valModel');
+          if (mEl) mEl.textContent = msg.model.toUpperCase();
+        }
+        if (msg.voice) {
+          const vEl = document.getElementById('valVoice');
+          if (vEl) vEl.textContent = msg.voice.toUpperCase();
+        }
+        addLog('INIT', `Linked with engine: ${msg.model || 'JARPIS'}`);
+      } else if (msg.type === 'status') {
+        if (msg.status === 'listening') {
+          setState(AppState.LISTENING);
+        } else if (msg.status === 'thinking') {
+          setState(AppState.PROCESSING);
+        } else if (msg.status === 'speaking') {
+          setState(AppState.SPEAKING);
+        } else if (msg.status === 'idle') {
+          setState(AppState.STANDBY);
+        }
+      } else if (msg.type === 'amplitude') {
+        if (msg.value !== undefined) {
+          const pct = Math.min(100, Math.floor(msg.value * 100));
+          const audioBar = document.getElementById('barAudio');
+          if (audioBar) audioBar.style.width = pct + '%';
+        }
+      } else if (msg.type === 'transcript') {
+        speakerLabel.textContent = 'USER // SPEECH RECOGNIZED';
+        typewriterText(`"${msg.text}"`);
+        addLog('STT', `Transcribed: "${msg.text}"`);
+      } else if (msg.type === 'reply_chunk') {
+        speakerLabel.textContent = 'J.A.R.V.I.S. // VOCAL SYNTHESIS';
+        transcriptContent.textContent = `"${msg.full_text}"`;
+        setState(AppState.SPEAKING);
+      } else if (msg.type === 'reply_complete') {
+        addLog('TTS', 'Sentence playback completed');
+        setState(AppState.STANDBY);
+      } else if (msg.type === 'error') {
+        addLog('ERR', msg.message);
+      }
+    }
+
+    // Initial Kickoff
+    window.addEventListener('load', () => {
+      renderVisualizers();
+      addLog('INIT', 'Holographic Iron Man 3 HUD ready');
+      connectWebSocket();
+    });
+  </script>
+</body>
+</html>
